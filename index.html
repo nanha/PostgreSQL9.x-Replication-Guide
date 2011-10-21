@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Presentation</title>
+    <link href="css/default.css" class="theme" rel="stylesheet" media="screen" />
+  </head>
+  <body>
+    <div class="presentation">
+      <div id="presentation-counter">Loading...</div>
+      <div class="slides">
+        <div class="slide" id="landing-slide">
+          <style>
+            #landing-slide p {
+              font-size: 35px;
+            }
+            p#disclaimer-message {
+              font-size: 20px;
+            }
+          </style>
+          <section class="middle">
+            <p>PostgreSQL 9.x presentation</p>
+            <p>Press <span id="left-init-key" class="key">&rarr;</span> key</p>
+          </section>
+        </div>
+
+
+		<div class="slide">
+          <section class="middle formula" data-build>
+            <h1>PostgreSQL 9.x</h1>
+            <div>=</div>
+            <span class="css">Hot Standby + Streaming Replication</span> 라해도 과언이 아님
+          </section>
+        </div>
+
+
+		<div class="slide">
+			<header>
+				<h2>■ 소개</h2>
+			</header>
+			<section class="small">
+				<h3>- 2010-09-20 PostgreSQL 드디어 v9.0 버젼을 배포</h3><br /><br />
+				<h3>- 현재 v9.1.1, Replication 기능의 완성도 점점 높아짐. 현재는 사용해도 무리없다고 밝힘.</h3><br /><br />
+				<h3>- 3rd_party 솔루션을 사용하거나 Warm Standby를 사용했던 복잡한 설정을 벗어나, Core에 포함시켜 간단하게 설정할 수 있음</h3><br /><br />
+				<h3>- 트랜잭션로그를 저장하지 않는 unlogged table type 추가</h3><br /><br />
+				<h3>- VACUUM FULL 기능 새로 구현 및 속도 개선</h3><br /><br />
+				<h3>- 이외 추가된 기능들 있으니 참고 <a href="http://www.postgresql.org/docs/9.0/static/index.html" rel="" class="">링크</a></h3>
+			</section>
+		</div>
+
+
+
+
+		<div class="slide">
+          <section class="middle formula">
+            <h2>PostgreSQL 9의 Replication 방식</h2>
+          </section>
+        </div>
+
+
+
+		<div class="slide">
+			<header>
+				<h2>■ Hot_Standby</h2>
+			</header>
+          <section>
+			<h3>- 9.x에 도입된 방식</h3><br /><br />
+			<h3>- Hot Standby는 기존 Warm Standby를 보완한 기능이며, Standby 서버에서도 read-only 쿼리를 할 수 있음.</h3>
+			<pre>postgresql.conf에 hot_standby Attribute 가 생겨났고,
+이는 기본설정인 16MB의 WAL파일을 Standby 서버로 전송하여 Standby 서버가 Recovery 상태에서도
+read-only 쿼리를 할 수 있도록 가용성 증대시킴.</pre><br />
+			<h3>- Warm Standby + Hot Standby 설정시 Replication 가능함. <span class="html">그러나, 설정 복잡함</span></h3><br />
+			<h3>- Warm Standby의 꽉채운 WAL파일(16MB) 전송방법은 hot_standby의 장점을 저하시키는 요인이어서, WAL파일을 꽉채우지 않고, 실시간으로 WAL 로그를 전송하는 <b>Streaming Replication(SR)</b> 기능 추가됨</h3><br />
+			<h3>- SR개념은 v8.x 부터 계획을 하고 있었다고 함.</h3>
+          </section>
+        </div>
+
+
+
+
+
+		<div class="slide">
+			<header>
+				<h2>■ Streaming Replication</h2>
+			</header>
+          <section>
+			<h3>- 9.x에 도입된 방식</h3><br />
+			<h3>- Binary Replication 혹은 hot_standby 라고도 불려짐</h3><br />
+			<h3>- 이전 페이지에서 설명한 hot_standby 에 보강된 설정임</h3><br />
+			<h3>- Warm_standby의 단점인 꽉채운 WAL파일 전송으로 인한 성능저하문제로 인해 WAL파일을 꽉채우지 않고, 실시간으로 WAL Buffer 로부터 WAL 레코드를 읽어들여 전송하는 것임</h3>
+			<pre>이 기능은 데이터를 Master 에서 Standby 서버로 직접 WAL 로그를 전송함으로서 replication delay 를 줄여줌.</pre><br />
+			<h3>- WAL 파일을 사용하는 경우는 Slave가 죽어서 restart 할때이고, 이때 Master의 WAL 파일이 전송되어 Slave 데이타를 Sync해준다.</h3><br />
+			<h3>- 설정 간단함</h3>
+          </section>
+        </div>
+
+
+
+		<div class="slide">
+			<header>
+				<h2>■ Replication 가능하게 하는 프로세스</h2>
+			</header>
+          <section>
+			<img src="image/walprocess.jpg" width="840">
+          </section>
+        </div>
+
+
+
+
+
+
+		<div class="slide">
+			<header>
+				<h2>■ Warm Standby와 차이점</h2>
+			</header>
+			<section>
+<table class="excel"><tbody>
+<tr>
+<th width="120"> 구분 </th>
+<th> Warm Standby </th>
+<th> 9.x </th>
+</tr>
+<tr>
+<td> Standby 사용가능 여부 </td>
+<td> 불가능, <b>Recovery mode</b> 이기 때문 </td>
+<td> 가능, hot_standby Attribute와 Streaming Replication 설정 추가됨. </td>
+</tr>
+<tr>
+<td> 데이타 전송 </td>
+<td> WAL 파일(16MB)을 꽉채워 Standby 서버에 보내고, 이를&nbsp;<b>Recovery mode</b>로 진행함. delay발생. </td>
+<td> <b>Streaming</b> (<b>Binary replication</b>) 꽉 채워진 WAL 파일을 전송할 필요가 없고, 부분적으로 채워진 WAL 로그가 바로 전송됨. delay 굉장히 적음. </td>
+</tr>
+<tr>
+<td> (비)동기 전송방식 </td>
+<td> 비동기 </td>
+<td> 비동기 (무시가능) </td>
+</tr>
+<tr>
+<td> 고가용성 </td>
+<td> 겉보기에만 고가용, Standby를 사용할 수 없기 때문에 재해대책일뿐 </td>
+<td> O </td>
+</tr>
+</tbody></table>
+			</section>
+		</div>
+
+
+
+
+		<div class="slide">
+          <section class="middle formula">
+            <h2>Replication 설정</h2>
+          </section>
+        </div>
+
+
+
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ postgresql.conf에서 크게 달라진점</h2>
+            </header>
+          <section class="">
+			<h3>- wal_level Attribute 추가</h3>
+			<pre>
+# ------------------------------------------------------------------------------
+# WRITE AHEAD LOG
+# ------------------------------------------------------------------------------
+ 
+# - Settings -
+ 
+# wal_level = hot_standby                 # minimal, archive, or hot_standby
+</pre>
+			<h3>- Replication Section 추가</h3>
+			<pre># ------------------------------------------------------------------------------
+# REPLICATION
+# ------------------------------------------------------------------------------
+ 
+# - Master Server -
+ 
+# These settings are ignored on a standby server
+ 
+# max_wal_senders = 3             # max number of walsender processes
+                                # (change requires restart)
+# wal_sender_delay = 1s          # walsender cycle time, 1-10000 milliseconds
+# wal_keep_segments = 0          # in logfile segments, 17MB each; 0 disables
+# vacuum_defer_cleanup_age = 0   # number of xacts by which cleanup is delayed
+# replication_timeout = 60s      # in milliseconds; 0 disables
+# synchronous_standby_names = '' # standby servers that provide sync rep
+                                # comma-separated list of application_name
+                                # from standby(s); '*' = all
+ 
+# - Standby Servers -
+ 
+# These settings are ignored on a master server
+ 
+# hot_standby = off                      # "on" allows queries during recovery
+                                        # (change requires restart)
+# max_standby_archive_delay = 30s        # max delay before canceling queries
+                                        # when reading WAL from archive;
+                                        # -1 allows indefinite delay
+# max_standby_streaming_delay = 30s      # max delay before canceling queries
+                                        # when reading streaming WAL;
+                                        # -1 allows indefinite delay
+# wal_receiver_status_interval = 10s     # send replies at least this often
+                                        # 0 disables
+# hot_standby_feedback = off             # send info from standby to prevent
+                                        # query conflicts</pre>
+          </section>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ Replication 설정방법</h2>
+            </header>
+			<section>
+				<h3>- Master 서버에서 postgresql.conf 수정</h3>
+				<pre>listen_address = '*'
+wal_level = hot_standby
+max_wal_senders = 3</pre><br />
+				<h3>- Standby 서버에서 Master서버의 Postgresql에 접속할 수 있도록 Master서버에서 pg_hba.conf 추가</h3>
+				<pre># DATABASE는 replication 으로 꼭 해야 합니다. 실제 replication 라는 DATABASE는 확인되지 않는데
+다른 DATABASE지정하면 SLAVE 서버에서 접근할 수 없다는 에러가 나오더군요. 아시는분은 노티 바랍니다.
+host  replication   all   1.1.1.2/32      trust</pre><br />
+				<h3>- Standby 서버에서 postgresql.conf 아래과 같이 수정</h3>
+				<pre>hot_standby = on</pre>
+			</section>
+		</div>
+
+		<div class="slide">
+			<section>
+				<h3>- Standby 서버에서 recovery.conf 아래과 같이 수정하고, data 디렉토리안에 복사</h3>
+				<pre>standby_mode = 'on'
+
+# Master 서버에 접속할 수 있도록 계정을 만들어서 설정합니다.
+primary_conninfo = 'host=1.1.1.1 port=5432 user=postgres password='
+
+# Master 서버의 Failover시에 Replication을 중단하고, 해당 Standby 서버가 Master 서버역할을 할 수 있도록 하는 파일위치입니다.
+# touch failover 라고 파일만 생성해주면, Failover시에 체크하여 작동합니다.
+trigger_file = '/usr/local/pgsql/data/failover'</pre>
+			</section>
+		</div>
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ 데이타 복사</h2>
+            </header>
+			<section>
+				<h3>■ Master 서버의 데몬를 죽이고 하는 방법</h2>
+				<h4>- 데몬을 죽입니다</h3>
+				<h4>- pg_xlog과 conf 파일을 제외한 나머지를 Standby 서버와 Sync 합니다.</h3>
+				<pre>rsync -av --exclude postgresql.conf --exclude postmaster.pid ${PGDATA}/* 1.1.1.2:${PGDATA}</pre>
+				<h4>- Master, Standby 서버의 데몬을 시작</h3>
+				<h4>- Replication 확인</h3><br /><br /><br />
+
+				<h3>■ Master 서버의 데몬를 죽이지 않고 하는 방법, PITR (Point In Time Recovery)</h2>
+				<pre>$ psql -c "SELECT pg_start_backup('label', true)"
+$ rsync -a ${PGDATA}/ 1.1.1.2:${PGDATA} --exclude postmaster.pid
+$ psql -c "SELECT pg_stop_backup()"
+
+# pg_xlog 관계있을시
+$ rsync -av ${PGDATA}/pg_xlog 1.1.1.2:${PGDATA}</pre>
+			</section>
+		</div>
+
+
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ Tip</h2>
+            </header>
+			<section>
+				<h3>- Slave 서버에서 start 할시 아래와 같은 메세지가 나오면</h3>
+				<pre>
+$ LOG: database system was interrupted while in recovery at log time 2011-10-12 09:10:03 KST
+HINT: If this has occurred more than once some data might be corrupted and you might need to choose an earlier recovery target.
+LOG: entering standby mode
+WARNING: WAL was generated with wal_level=minimal, data may be missing
+HINT: This happens if you temporarily set wal_level=minimal without taking a new base backup.
+FATAL: hot standby is not possible because wal_level was not set to "hot_standby" on the master server
+HINT: Either set wal_level to "hot_standby" on the master, or turn off hot_standby here.
+LOG: startup process (PID 14027) exited with exit code 1
+LOG: aborting startup due to startup process failure</pre>
+				<h3>- Replication 설정을 마친후 Master의 데이타를 Slave 에 Sync해주지 않은 경우입니다. 
+꼭, rsync 혹은 PITR 백업을 진행하신 후, 기본 데이타를 동기화시켜주셔야 합니다.</h3>
+			</section>
+		</div>
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ 프로세스 확인</h2>
+            </header>
+			<section>
+				<h3>- Master Process (wal sender process 를 확인)</h3>
+				<pre>
+postgres: writer process
+postgres: wal writer process
+postgres: autovacuum launcher process
+postgres: stats collector process
+postgres: wal sender process postgres 1.1.1.1(47175) streaming 0/4000208</pre>
+				<br /><br />
+				<h3>- Slave Process (wal receiver process 를 확인)</h3>
+				<pre>
+postgres: startup process   recovering 000000010000000000000004
+postgres: wal receiver process   streaming 0/4000208
+postgres: writer process
+postgres: stats collector process</pre>
+			</section>
+		</div>
+
+
+
+
+
+		<div class="slide">
+          <section class="middle formula">
+            <h1>기타</h1>
+          </section>
+        </div>
+
+
+
+		<div class="slide">
+            <header>
+              <h2>■ Replcation 관련 쿼리</h2>
+            </header>
+			<section>
+				<pre>postgres=# SELECT pg_is_in_recovery();
+pg_is_in_recovery
+\------------------\-
+t
+(1 row)
+ 
+postgres=#  SELECT txid_current_snapshot();
+txid_current_snapshot
+\----------------------\-
+2000:2000:
+(1 row)
+  
+$ psql -c "SELECT pg_current_xlog_location()" -h192.168.0.10 (primary host)
+ pg_current_xlog_location
+--------------------------
+ 0/2000000
+(1 row)
+ 
+$ psql -c "select pg_last_xlog_receive_location()" -h192.168.0.20 (standby host)
+ pg_last_xlog_receive_location
+-------------------------------
+ 0/2000000
+(1 row)
+ 
+$ psql -c "select pg_last_xlog_replay_location()" -h192.168.0.20 (standby host)
+ pg_last_xlog_replay_location
+------------------------------
+ 0/2000000
+(1 row)</pre>
+			</section>
+		</div>
+
+
+        <div class="slide" id="title-slide">
+          <section class="middle">
+            <hgroup>
+              <h1>
+                감사합니다.
+              </h1>
+            </hgroup>
+          </section>
+        </div>
+
+	<!-- presentation -->
+
+    <script defer>
+      (function() {
+        var doc = document;
+        var disableBuilds = false;
+
+        var ctr = 0;
+        var spaces = /\s+/, a1 = [''];
+
+        var toArray = function(list) {
+          return Array.prototype.slice.call(list || [], 0);
+        };
+
+        var byId = function(id) {
+          if (typeof id == 'string') { return doc.getElementById(id); }
+          return id;
+        };
+
+        var query = function(query, root) {
+          return queryAll(query, root)[0];
+        }
+
+        var queryAll = function(query, root) {
+          if (!query) { return []; }
+          if (typeof query != 'string') { return toArray(query); }
+          if (typeof root == 'string') {
+            root = byId(root);
+            if(!root){ return []; }
+          }
+
+          root = root || document;
+          var rootIsDoc = (root.nodeType == 9);
+          var doc = rootIsDoc ? root : (root.ownerDocument || document);
+
+          // rewrite the query to be ID rooted
+          if (!rootIsDoc || ('>~+'.indexOf(query.charAt(0)) >= 0)) {
+            root.id = root.id || ('qUnique' + (ctr++));
+            query = '#' + root.id + ' ' + query;
+          }
+          // don't choke on something like ".yada.yada >"
+          if ('>~+'.indexOf(query.slice(-1)) >= 0) { query += ' *'; }
+          return toArray(doc.querySelectorAll(query));
+        };
+
+        var strToArray = function(s) {
+          if (typeof s == 'string' || s instanceof String) {
+            if (s.indexOf(' ') < 0) {
+              a1[0] = s;
+              return a1;
+            } else {
+              return s.split(spaces);
+            }
+          }
+          return s;
+        };
+
+        // Needed for browsers that don't support String.trim() (e.g. iPad)
+        var trim = function(str) {
+          return str.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+        };
+
+        var addClass = function(node, classStr) {
+          classStr = strToArray(classStr);
+          var cls = ' ' + node.className + ' ';
+          for (var i = 0, len = classStr.length, c; i < len; ++i) {
+            c = classStr[i];
+            if (c && cls.indexOf(' ' + c + ' ') < 0) {
+              cls += c + ' ';
+            }
+          }
+          node.className = trim(cls);
+        };
+
+        var removeClass = function(node, classStr) {
+          var cls;
+          if (classStr !== undefined) {
+            classStr = strToArray(classStr);
+            cls = ' ' + node.className + ' ';
+            for (var i = 0, len = classStr.length; i < len; ++i) {
+              cls = cls.replace(' ' + classStr[i] + ' ', ' ');
+            }
+            cls = trim(cls);
+          } else {
+            cls = '';
+          }
+          if (node.className != cls) {
+            node.className = cls;
+          }
+        };
+
+        var toggleClass = function(node, classStr) {
+          var cls = ' ' + node.className + ' ';
+          if (cls.indexOf(' ' + trim(classStr) + ' ') >= 0) {
+            removeClass(node, classStr);
+          } else {
+            addClass(node, classStr);
+          }
+        };
+
+
+        // modernizr lite via https://gist.github.com/598008
+        var testStyle = function(style) {
+
+          var elem = document.createElement('div');
+          var prefixes = ['Webkit', 'Moz', 'O', 'ms', 'Khtml'];
+          var bool;
+          var bump = function(all, letter) {
+                return letter.toUpperCase();
+              };
+          var prop;
+
+          bool = style in elem.style;
+          prop = style.replace(/^(.)/, bump).replace(/-([a-z])/ig, bump);
+
+          for (var len = prefixes.length; len--; ){
+            if (bool) {
+              break;
+            }
+            bool = prefixes[len] + prop in elem.style;
+          }
+
+          document.documentElement.className += ' ' + (bool ? '' : 'no-') + style.replace(/-/g, '');
+          return bool;
+        };
+
+        var canTransition = testStyle('transition');
+
+        //
+        // Slide class
+        //
+        var Slide = function(node, idx) {
+          this._node = node;
+          if (idx >= 0) {
+            this._count = idx + 1;
+          }
+          if (this._node) {
+            addClass(this._node, 'slide distant-slide');
+          }
+          this._makeCounter();
+          this._makeBuildList();
+        };
+
+        Slide.prototype = {
+          _node: null,
+          _count: 0,
+          _buildList: [],
+          _visited: false,
+          _currentState: '',
+          _states: [ 'distant-slide', 'far-past',
+                     'past', 'current', 'future',
+                     'far-future', 'distant-slide' ],
+          setState: function(state) {
+            if (typeof state != 'string') {
+              state = this._states[state];
+            }
+            if (state == 'current' && !this._visited) {
+              this._visited = true;
+              this._makeBuildList();
+            }
+            removeClass(this._node, this._states);
+            addClass(this._node, state);
+            this._currentState = state;
+
+            // delay first auto run. Really wish this were in CSS.
+            /*
+            this._runAutos();
+            */
+            var _t = this;
+            setTimeout(function(){ _t._runAutos(); } , 400);
+
+            if (state == 'current') {
+              this._onLoad();
+            } else {
+              this._onUnload();
+            }
+          },
+          _onLoad: function() {
+            this._fireEvent('onload');
+            this._showFrames();
+          },
+          _onUnload: function() {
+            this._fireEvent('onunload');
+            this._hideFrames();
+          },
+          _fireEvent: function(name) {
+            var eventSrc = this._node.getAttribute(name);
+            if (eventSrc) {
+              eventSrc = '(function() { ' + eventSrc + ' })';
+              var fn = eval(eventSrc);
+              fn.call(this._node);
+            }
+          },
+          _showFrames: function() {
+            var frames = queryAll('iframe', this._node);
+            function show() {
+              frames.forEach(function(el) {
+                var _src = el.getAttribute('_src');
+                if (_src && _src.length) {
+                  el.src = _src;
+                }
+              });
+            }
+            setTimeout(show, 0);
+          },
+          _hideFrames: function() {
+            var frames = queryAll('iframe', this._node);
+            function hide() {
+              frames.forEach(function(el) {
+                var _src = el.getAttribute('_src');
+                if (_src && _src.length) {
+                  el.src = '';
+                }
+              });
+            }
+            setTimeout(hide, 250);
+          },
+          _makeCounter: function() {
+            if(!this._count || !this._node) { return; }
+            var c = doc.createElement('span');
+            c.textContent = this._count;
+            c.className = 'counter';
+            this._node.appendChild(c);
+          },
+          _makeBuildList: function() {
+            this._buildList = [];
+            if (disableBuilds) { return; }
+            if (this._node) {
+              this._buildList = queryAll('[data-build] > *', this._node);
+            }
+            this._buildList.forEach(function(el) {
+              addClass(el, 'to-build');
+            });
+          },
+          _runAutos: function() {
+            if (this._currentState != 'current') {
+              return;
+            }
+            // find the next auto, slice it out of the list, and run it
+            var idx = -1;
+            this._buildList.some(function(n, i) {
+              if (n.hasAttribute('data-auto')) {
+                idx = i;
+                return true;
+              }
+              return false;
+            });
+            if (idx >= 0) {
+              var elem = this._buildList.splice(idx, 1)[0];
+
+              var _t = this;
+              if (canTransition) {
+                var l = function(evt) {
+                  elem.parentNode.removeEventListener('webkitTransitionEnd', l, false);
+                  elem.parentNode.removeEventListener('transitionend', l, false);  // moz
+                  elem.parentNode.removeEventListener('oTransitionEnd', l, false);
+                  _t._runAutos();
+                };
+                elem.parentNode.addEventListener('webkitTransitionEnd', l, false);
+                elem.parentNode.addEventListener('transitionend', l, false);
+                elem.parentNode.addEventListener('oTransitionEnd', l, false);
+                removeClass(elem, 'to-build');
+              } else {
+                setTimeout(function() {
+                  removeClass(elem, 'to-build');
+                  _t._runAutos();
+                }, 400);
+              }
+            }
+          },
+          buildNext: function() {
+            if (!this._buildList.length) {
+              return false;
+            }
+            removeClass(this._buildList.shift(), 'to-build');
+            return true;
+          },
+        };
+
+        //
+        // SlideShow class
+        //
+        var SlideShow = function(slides) {
+          this._slides = (slides || []).map(function(el, idx) {
+            return new Slide(el, idx);
+          });
+          var h = window.location.hash;
+          try {
+            this.current = h;
+          } catch (e) { /* squeltch */ }
+          this.current = (!this.current) ? "landing-slide" : this.current.replace('#', '');
+          if (!query('#' + this.current)) {
+            // if this happens is very likely that someone is coming from
+            // a link with the old permalink format, i.e. #slide24
+            alert('The format of the permalinks have recently changed. If you are coming ' +
+                   'here from an old external link it\'s very likely you will land to the wrong slide');
+            this.current = "landing-slide";
+          }
+          var _t = this;
+          doc.addEventListener('keydown',
+              function(e) { _t.handleKeys(e); }, false);
+          doc.addEventListener('touchstart',
+              function(e) { _t.handleTouchStart(e); }, false);
+          doc.addEventListener('touchend',
+              function(e) { _t.handleTouchEnd(e); }, false);
+          window.addEventListener('popstate',
+              function(e) { if (e.state) { _t.go(e.state); } }, false);
+          query('#left-init-key').addEventListener('click',
+              function() { _t.next(); }, false);
+          this._update();
+        };
+
+        SlideShow.prototype = {
+          _presentationCounter: query('#presentation-counter'),
+          _slides: [],
+          _getCurrentIndex: function() {
+            var me = this;
+            var slideCount = null;
+            queryAll('.slide').forEach(function(slide, i) {
+              if (slide.id == me.current) {
+                slideCount = i;
+              }
+            });
+            return slideCount + 1;
+          },
+          _update: function(dontPush) {
+            // in order to delay the time where the counter shows the slide number we check if
+            // the slides are already loaded (so we show the loading... instead)
+            // the technique to test visibility is taken from here
+            // http://stackoverflow.com/questions/704758/how-to-check-if-an-element-is-really-visible-with-javascript
+            var docElem = document.documentElement;
+            var elem = document.elementFromPoint( docElem.clientWidth / 2, docElem.clientHeight / 2);
+            var currentIndex = this._getCurrentIndex();
+            if (elem && elem.className != 'presentation') {
+                this._presentationCounter.textContent = currentIndex;
+            }
+            if (history.pushState) {
+              if (!dontPush) {
+                history.replaceState(this.current, 'Slide ' + this.current, '#' + this.current);
+              }
+            } else {
+              window.location.hash = this.current;
+            }
+            for (var x = currentIndex-1; x < currentIndex + 7; x++) {
+              if (this._slides[x-4]) {
+                this._slides[x-4].setState(Math.max(0, x-currentIndex));
+              }
+            }
+          },
+
+          current: 0,
+          next: function() {
+            if (!this._slides[this._getCurrentIndex() - 1].buildNext()) {
+              var next = query('#' + this.current + ' + .slide');
+              this.current = (next) ? next.id : this.current;
+              this._update();
+            }
+          },
+          prev: function() {
+            var prev = query('.slide:nth-child(' + (this._getCurrentIndex() - 1) + ')');
+            this.current = (prev) ? prev.id : this.current;
+            this._update();
+          },
+          go: function(slideId) {
+            this.current = slideId;
+            this._update(true);
+          },
+
+          _notesOn: false,
+          showNotes: function() {
+            var isOn = this._notesOn = !this._notesOn;
+            queryAll('.notes').forEach(function(el) {
+              el.style.display = (notesOn) ? 'block' : 'none';
+            });
+          },
+          switch3D: function() {
+            toggleClass(document.body, 'three-d');
+          },
+          handleKeys: function(e) {
+
+            if (/^(input|textarea)$/i.test(e.target.nodeName) || e.target.isContentEditable) {
+              return;
+            }
+
+            switch (e.keyCode) {
+              case 37: // left arrow
+                this.prev(); break;
+              case 39: // right arrow
+              case 32: // space
+                this.next(); break;
+              case 50: // 2
+                this.showNotes(); break;
+              case 51: // 3
+                this.switch3D(); break;
+            }
+          },
+          _touchStartX: 0,
+          handleTouchStart: function(e) {
+            this._touchStartX = e.touches[0].pageX;
+          },
+          handleTouchEnd: function(e) {
+            var delta = this._touchStartX - e.changedTouches[0].pageX;
+            var SWIPE_SIZE = 150;
+            if (delta > SWIPE_SIZE) {
+              this.next();
+            } else if (delta< -SWIPE_SIZE) {
+              this.prev();
+            }
+          },
+        };
+
+        // Initialize
+        var slideshow = new SlideShow(queryAll('.slide'));
+
+        document.addEventListener('DOMContentLoaded', function() {
+          query('.slides').style.display = 'block';
+        }, false);
+       })();
+    </script>
+  </body>
+</html>
